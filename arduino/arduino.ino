@@ -23,8 +23,10 @@ void loop()
   int rec=Serial.available();
 
   if(digitalRead(10)==1&&pulso==1)
-    pulso=0;Serial.print('a');
-
+  {
+    pulso=0;
+    Serial.print('a');
+  }
   else if(digitalRead(10)==0)
     pulso=1;
     
