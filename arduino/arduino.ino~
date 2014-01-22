@@ -73,7 +73,7 @@ void loop()
 	if(indice%T[i]==0 && T[i]!=0){
 	  mm=mm+lectura(i+1);}};
       mm=mm+"z";
-      if(mm.length()>1){Serial.print(mm);};
+      if(mm.length()>1){Serial.println(mm);};
       indice=indice+1;}; 
   delay(1000);
 }
