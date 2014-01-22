@@ -1,3 +1,4 @@
+//Programa del arduino
 int numero=0;
 char A[26];int T[5]={0,0,0,0,0}; 
 int T1=0;int T2=0;int T3=0;int T4=0;int T5=0;
