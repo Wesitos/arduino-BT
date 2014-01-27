@@ -5,7 +5,7 @@ from __future__ import print_function
 import bluetooth as bt
 import time
 import Queue
-import recopilador
+from recopilador import Recopilador
 
 class Comunicador():
     """Esta es la clase que maneja la comunicacion con el Arduino"""
@@ -14,6 +14,7 @@ class Comunicador():
         self.bt_direcc = mac
         self.port = puerto
         self.crear_socket()
+        self.lista = Queue.Queue()
 
     def crear_socket(self):
         """Crea, o vuelve a crear, el socket de conexión"""
@@ -33,14 +34,13 @@ class Comunicador():
                 time.sleep(2)
                 self.crear_socket()
             else:
-                print("Conexion exitosa")
-                break
+                print("Conexion exitosa!")
+                return
         print("Imposible conectarse al destino")
 
 
     def enviar_mensaje(self,mensaje):
-        """Manda una cadena
-        """
+        """Manda una cadena al arduino"""
         for i in range(0,5):
             try:
                 self.socket.send(mensaje)
@@ -48,19 +48,27 @@ class Comunicador():
                 print("Error al enviar mensaje, reintentando")
                 time.sleep(2)
             else:
-                break
+                return
         print("Imposible enviar mensaje al destino.")
 
-    def iniciar( dicc,traducir=None,volcar_datos=None ):
+
+    def iniciar(self, conf_inicial,traducir=None,volcar_datos=None ):
         """Despliega el recopilador y comunica las configuración de las mediciones
         al arduino"""
-        self.lista = Queue.Queue()
-        
-        recop = Recopilador(self.socket,self.lista,traducir,volcar_datos)
+
+        #Envia la configuracion inicial al arduino
+        self.enviar_mensaje(conf_inicial)
+        dic_params = { "traducir" : traducir, "volcar_datos" : volcar_datos }
+
+        self.recop = Recopilador(self.socket,self.lista, **dic_params)
         
         #Iniciamos el recopilador
-        recop.setDaemon(True)
-        recop.start()
-        self.recop= recop
+        #recop.setDaemon(True)
+        self.recop.start()
 
+    def terminar(self):
+        self.recop.terminar()
+        while self.recop.is_alive():
+            time.sleep(0.2)
+        self.socket.close()
         
