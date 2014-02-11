@@ -1,7 +1,8 @@
 // Chart definition
 var chart;
 var chart2;
-
+var new_data_0= [];
+var new_data_1= [];
 
 // Once DOM (document) is finished loading
 $(document).ready(function() {
@@ -18,27 +19,42 @@ $(document).ready(function() {
 		    var series = this.series[0];
 		    setInterval(function() 
 				{
-				   
+
 				    var date = chart.xAxis[0].getExtremes().dataMax;
 				    $.getJSON('live-server-data.php','table=0&date='+date, 
 					      function(data)
 					      {
-						  new_data = data;
+						  new_data_0 = data;
 					      });
-				    while (new_data.length>0)
+				    while (new_data_0.length>0)
 				    {
-					punto = new_data.pop()
-					chart.series[0].addPoint(punto, true, false);
+					punto = new_data_0.pop()
+					series.addPoint(punto, true, false);
 				    }
-				    }, 2000);
+				}, 1000);
 		}
 	    }
 	},
 	title: {
-	    text: 'Ejemplo'
+	    text: 'temp0'
 	},
 	rangeSelector: {
-	    enabled: true
+	    buttons:[
+		{
+		    type: 'day',
+		    count: 1,
+		    text: '1d'
+		},
+		{
+		    type: 'week',
+		    count: 1,
+		    text: '1w'
+		},
+		{
+		    type: 'all',
+		    text: 'All'
+		}
+	    ]
 	},
 	series: [{}],
 
@@ -48,7 +64,7 @@ $(document).ready(function() {
 
     };
 
-var options2 ={
+    var options2 ={
 	chart: {
 	    renderTo: 'chart2',
 
@@ -59,27 +75,42 @@ var options2 ={
 		    var series = this.series[0];
 		    setInterval(function() 
 				{
-				   
+
 				    var date = chart.xAxis[0].getExtremes().dataMax;
 				    $.getJSON('live-server-data.php','table=1&date='+date, 
 					      function(data)
 					      {
-						  new_data = data;
+						  new_data_1 = data;
 					      });
-				    while (new_data.length>0)
+				    while (new_data_1.length>0)
 				    {
-					punto = new_data.pop()
-					chart.series[0].addPoint(punto, true, false);
+					punto = new_data_1.pop()
+					series.addPoint(punto, true, false);
 				    }
-				    }, 2000);
+				}, 1000);
 		}
 	    }
 	},
 	title: {
-	    text: 'Ejemplo'
+	    text: 'temp1'
 	},
 	rangeSelector: {
-	    enabled: true
+	    buttons: [
+		{
+		    type: 'day',
+		    count: 1,
+		    text: '1d'
+		},
+		{
+		    type: 'week',
+		    count: 1,
+		    text: '1w'
+		},
+		{
+		    type: 'all',
+		    text: 'All'
+		}
+	    ]
 	},
 	series: [{}],
 
@@ -93,16 +124,12 @@ var options2 ={
 	      function(data)
 	      {
 		  options.series[0].data=data;
+		  options2.series[0].data=data;
 		  //chart= new Highcharts.Chart(options);
 		  chart = new Highcharts.StockChart(options);
 		  chart2 = new Highcharts.StockChart(options2);
 	      });
 
-
-    // Switchers (of the Chart1 type) - onclick handler
-    $('.update').click(function () {
-	var newType = $(this).attr('id');
-    });
 });
 
 
