@@ -63,7 +63,6 @@ class Comunicador():
         self.recop = Recopilador(self.socket,self.lista, **dic_params)
         
         #Iniciamos el recopilador
-        #recop.setDaemon(True)
         self.recop.start()
 
     def terminar(self):
