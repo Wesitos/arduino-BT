@@ -7,14 +7,14 @@
 //     compilador de arduino (al parecer, es posible).
 //
 //    -Es posible que requiramos uso de mucha memoria, hay que diseñar
-//     El programa de tal forma que el uso de esta se minimice
+//     el programa de tal forma que el uso de esta se minimice
 //    
 //    -Hay que diseñar el programa de tal forma que se pueda luego
 //     agregar mayor cantidad de sensores por otros metodos
 //
 //    -Se deben tomar datos por tiempos muy prolongados de tiempo
-//     El reloj del arduino no es lo suficientemente preciso. Hay que
-//     Utilizar un reloj externo o sincronizar el tiempo con la
+//     el reloj del arduino no es lo suficientemente preciso. Hay que
+//     utilizar un reloj externo o sincronizar el tiempo con la
 //     computadora periodicamente.
 
 #include<string.h>
@@ -32,9 +32,9 @@
 
 //Caracteres separadores de mensajes (ASCII) (# ; , )
 //Como cadena para utilizarlos en strsep
-const char SEP_MENS1[] = "\x35";
-const char SEP_MENS2[] = "\x59";
-const char SEP_MENS3[] = "\x46";
+char SEP_MENS1[] = "\x35";
+char SEP_MENS2[] = "\x59";
+char SEP_MENS3[] = "\x46";
 
 //Pines utilizados
 #define PIN_VCC_SENS 13
@@ -42,7 +42,7 @@ const char SEP_MENS3[] = "\x46";
 #define PIN_LED 12
 
 //Cadena de caracteres, como C manda
-char buf_mens[TALLA+1];
+char buf_mens[TALLA_BUF+1];
 
 char aux[TALLA_AUX+1];
 
@@ -58,11 +58,21 @@ DateTime aux_time;
 
 //Variables temporales (segundos)
 //Tiempo del inicio de la toma de medidas
-long t_inicial = 0;
+long t_inicial;
 //Tiempo de la ultima medida
-long t_previo = 0;
+long t_previo;
 //Tiempo "actual"
-long t_actual = 0;
+long t_actual;
+
+//MUX
+//Numero de bites de direccion
+#define N_MUX 3
+//Array de pines de seleccion de direccion LSBFIRST
+byte Data[N_MUX] = {8,9,10};
+//Pin analogico de lectura
+#define DATA_PIN 0
+
+int toma_datos;
 
 void setup()
 {
@@ -78,10 +88,17 @@ void setup()
 
   Serial.setTimeout(100); //tiempo de espera maximo
 
+  t_inicial = 0;
+  t_previo = 0;
+  t_actual = 0;
+
   inicializa_tiempo();
   //Inicializa el array de periodos
-  for (i=0; i<N_SENS;i++)
+  for (int i=0; i<N_SENS;i++)
     Tiempo[i] = 0;
+
+  //Al inicio no realizamos mediciones
+  toma_datos = 0;
 }
 
 //Tratando de simplificar la estructura del programa
@@ -91,48 +108,12 @@ void loop()
   if ( Serial.available() )
     lee_serial();
 
-  else if( actualiza_tiempo() )
-    realiza_medicion();
+  else if( realiza_medicion &&  actualiza_tiempo() )
+    {
+      realiza_medicion();
+      delay(100);
+    }
   
-  //Retardo
-  delay(100);
-}
-
-
-//Asigna el valor de tiempo inicial, reinicia los otros contadores de
-//tiempo
-void inicializa_tiempo()
-{
-  aux_time = rtc.now();
-  t_inicial = aux_time.unixtime();
-  t_previo = t_inicial;
-  t_Actual = t_inicial;
-}
-
-
-//Esta funcion actualiza t_actual.
-//Devuelve la diferencia de este con t_previo en segundos
-long actualiza_tiempo()
-{
-  t_actual = aux_time.unixtime();
-  return t_actual - t_previo;
-}
-
-//Devuelve los segundos que han pasado desde el inicio de la toma de
-//datos
-unsigned get_tiempo()
-{
-  return t_actual - t_inicial;
-}
-
-//Indica si ya paso una multiplo entero de periodo (segundos)
-int verifica_tiempo(unsigned periodo)
-{
-  long dif = t_actual - t_inicial;
-  if ( dif % periodo )
-    return 0;
-  else
-    return 1;
 }
 
 //Esta funcion lee del puerto serial hasta que este quede vacio
@@ -143,7 +124,6 @@ void lee_serial()
   int len_buf;
   char *point_sep_mens = NULL;
   char *point_cad = NULL;
-
 
   do
     {
@@ -157,10 +137,10 @@ void lee_serial()
 			   bytes_disp < TALLA_AUX ? bytes_disp : TALLA_AUX);
 
       //concatena lo leido en buf_mens
-      len_buf=strlcat( buf_mens,aux, TALLA+1 );
+      len_buf=strlcat( buf_mens,aux, TALLA_BUF+1 );
 	
       //Si el contenido de aux no entró en buf_mens
-      if(len_buf >= TALLA+1)
+      if(len_buf >= TALLA_BUF+1)
 	aux_size_error();
 	
       if (! bytes_leidos)
@@ -199,14 +179,19 @@ void lee_serial()
 	case 'T':
 	  config_tiempo(aux);
 	  break;
-
+	case 'I':
+	  inicia_medicion();
+	  break;
+	case 'S':
+	  toma_datos = 0;
+	  break;
 	  //Aqui van otros tipos de mensajes
 	}
       
       //Borra el mensaje de buf_mens. El contenido de la cadena
       //despues del primer mensaje es movido al principio de esta
       if (point_cad)
-	memmove( buf_mens, point_cad, strlen(*point_cad)+1 );
+	memmove( buf_mens, point_cad, strlen(point_cad)+1 );
       else
 	buf_mens[0]='\0';
       //Ahora solo queda lo que le seguia al primer mensaje
@@ -214,37 +199,6 @@ void lee_serial()
 
     }
 }
-
-
-
-//Esto asigna los tiempos
-//Recibe un mensaje de la forma
-//   T234;6546;343;23    //Sin el caracter #
-//Despues, hay que modificarlo para que el mensaje sea de la forma
-//   T;1,2323;2,3454;5,34534
-void config_tiempo( char *mensaje)
-{
-  int i=0;
-  unsigned tiempo;
-  char *point_cad;
-  //Hace
-  mensaje++;
-  point_cad = mensaje;
-
-  do
-    {
-      strsep( &point_cad, SEP_MENS2);
-      tiempo=atol( mensaje );
-      mensaje = point_cad;
-
-      //Asigna el tiempo i
-      Tiempo[i]=tiempo;
-
-      i++;
-    }
-  while(point_cad);
-  
-}     
  
 //Falta implementar, lo que se va a ejecutar cuando lo que se lee del
 //buffer serial no entra en aux
@@ -272,12 +226,12 @@ int recolecta_sensores()
     for ( int j=0 ; (8*i + j  < N_SENS) && (j < 8) ; j++)
       if ( verifica_tiempo( i*8 + j ) )
 	{//Set bit
-	Aux_Tiempo[i] |= 1 << j;
-	cont_Sens++;
+	  Aux_Tiempo[i] |= 1 << j;
+	  cont_sens++;
 	}
       else
 	//Unset bit
-	AuxTiempo[i] &= 1 << j;
+	Aux_Tiempo[i] &= 1 << j;
   
   return cont_sens;
 }
@@ -298,9 +252,18 @@ int verifica_sensor(int i)
 
 int lectura( int sensor )
 {
-  
+  //Selecciona el sensor
+  set_mux( sensor , Data , N_MUX );
+  return analogRead(DATA_PIN);
 }
 
+//Empieza la acción
+void inicia_medicion()
+{
+  inicializa_tiempo();
+  toma_datos = 1;
+  
+}
 
 //Realiza las mediciones y las envia
 void realiza_medicion()
@@ -309,20 +272,18 @@ void realiza_medicion()
 
   for (int i = 0; i <= ultimo; i++)
     {
-      if (  verifica_sensor(i) )  )
+      if (  verifica_sensor(i) )  
 	{
 	  Serial.print(i);
-	  Serial.print( SEP_MENS_3 );
+	  Serial.print( SEP_MENS3 );
 	  Serial.print( lectura(i) );
 
 	  if( i != ultimo)
-	    Serial.print(SEP_MENS_2);
+	    Serial.print(SEP_MENS2);
 	  else
-	    Serial.print(SEP_MENS_1);
+	    Serial.print(SEP_MENS1);
 	}
-	  
-	
-	
     } 
-
+  //Actualiza t_previo
+  t_previo = t_actual;
 }
