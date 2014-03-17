@@ -14,9 +14,6 @@ void config_tiempo( char *mensaje)
   int i=0;
   unsigned tiempo;
   char *point_cad;
-  //Hace
-  mensaje++;
-  point_cad = mensaje;
 
   do
     {
@@ -31,4 +28,22 @@ void config_tiempo( char *mensaje)
     }
   while(point_cad);
   
-}     
+}
+
+//Empieza la acción
+void inicia_medicion()
+{
+  inicializa_tiempo();
+  toma_datos = 1;
+}
+
+void para_medicion()
+{
+  toma_datos = 0;
+}
+
+void reset_tiempo()
+{
+  for (int i=0; i<N_SENS;i++)
+    Tiempo[i] = 0;
+}

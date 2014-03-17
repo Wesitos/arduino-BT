@@ -23,6 +23,7 @@ void inicializa_tiempo()
 //Devuelve la diferencia de este con t_previo en segundos
 long actualiza_tiempo()
 {
+  aux_time = rtc.now();
   t_actual = aux_time.unixtime();
   return t_actual - t_previo;
 }
