@@ -17,6 +17,9 @@
 //     utilizar un reloj externo o sincronizar el tiempo con la
 //     computadora periodicamente.
 
+//Modo debug, manda informacion util para depurar por serial
+//#define DEBUG
+
 #include<string.h>
 
 //Librerias para utilizar el RTC
@@ -73,7 +76,7 @@ int toma_datos;
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(57600);
   Wire.begin();
   rtc.begin();
   
@@ -94,6 +97,8 @@ void setup()
 
   //Al inicio no realizamos mediciones
   toma_datos = 0;
+
+
 }
 
 //Tratando de simplificar la estructura del programa
@@ -103,18 +108,12 @@ void loop()
   if ( Serial.available() )
     lee_serial();
 
-  else if( toma_datos &&  actualiza_tiempo() )
+  if( toma_datos &&  actualiza_tiempo() )
     {
       realiza_medicion();
       delay(100);
     }
   
-}
-
-//Falta implementar, lo que se va a ejecutar cuando lo que se lee del
-//buffer serial no entra en aux
-void aux_size_error()
-{
 }
 
 //Devuelve el indice del ultimo sensor activado
@@ -129,7 +128,7 @@ int ultimo_sensor()
       if ( verifica_sensor(ultimo) )
 	break;
       
-      ultimo++;
+      ultimo--;
     }
   return ultimo;
 }
@@ -140,28 +139,27 @@ int recolecta_sensores()
   int cont_sens = 0;
   for (int i=0; i < N_SENS/8 + 1; i++)
     for ( int j=0 ; (8*i + j  < N_SENS) && (j < 8) ; j++)
-      if ( verifica_tiempo( i*8 + j ) )
-	{//Set bit
-	  Aux_Tiempo[i] |= 1 << j;
-	  cont_sens++;
+      if ( verifica_tiempo( Tiempo[i*8 + j] ) )
+	{
+	//Set bit
+	bitSet( Aux_Tiempo[i], j );
+	cont_sens++;
 	}
       else
 	//Unset bit
-	Aux_Tiempo[i] &= ~(1 << j);
+	bitClear( Aux_Tiempo[i] , j );
   
   return cont_sens;
 }
-
+#ifdef DEBUG
 int imprime_sensores()
 {
   for (int i=0; i < N_SENS/8 + 1; i++)
     for ( int j=0 ; (8*i + j  < N_SENS) && (j < 8) ; j++)
-      if ( verifica_tiempo( i*8 + j ) )
-	Serial.print(1);
-      else
-	Serial.print(0);
+      Serial.print( bitRead( Aux_Tiempo[i] , j ) );
   Serial.println();
 }
+#endif
 
 //Devuelve si se debe utilizar un sensor
 //La informacion de que sensores se deben utilizar es actualizada
@@ -172,7 +170,7 @@ int verifica_sensor(int i)
   if (i >= N_SENS)
     return 0;
 
-  if (Aux_Tiempo[(i-1)/8] & ( 1 << (i%8) ) )
+  if ( bitRead( Aux_Tiempo[(i)/8], i%8 ) )
     return 1;
   else
     return 0;
@@ -191,24 +189,27 @@ int lectura( int sensor )
 void realiza_medicion()
 {
   int cont_sens = recolecta_sensores();
+#ifdef DEBUG
   Serial.println();
   Serial.print( F("Recolecta_sensores: ") );
 
   Serial.print(cont_sens);
-  Serial.print( F( "Sensores;") );
+  Serial.print( F( " Sensores:") );
   imprime_sensores();  
-
+#endif
   //Si hay sensores que utilizar
-  if ( cont_sens )
-    {
-      digitalWrite(PIN_LED, HIGH);
-      Serial.print( F("T") );
-      Serial.print( SEP_MENS2 );
-      Serial.print( t_actual );
-      Serial.print( SEP_MENS2);
-      //Ejem:
-      // T;1394830169;
-    }
+  if ( ! cont_sens )
+    return;
+  
+  digitalWrite(PIN_LED, HIGH);
+
+  Serial.print( F("T") );
+  Serial.print( SEP_MENS2 );
+  Serial.print( t_actual );
+  Serial.print( SEP_MENS2);
+  //Ejem:
+  // T;1394830169;
+
 
   int ultimo = ultimo_sensor();
 

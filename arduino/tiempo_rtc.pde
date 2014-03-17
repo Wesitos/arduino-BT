@@ -13,7 +13,9 @@
 void inicializa_tiempo()
 {
   aux_time = rtc.now();
-  t_inicial = aux_time.unixtime();
+  //Por hacer, averiguar por que si no se le pone +1 no realiza
+  //medicion para t_actual == t_inicial
+  t_inicial = aux_time.unixtime() + 1 ;
   t_previo = t_inicial;
   t_actual = t_inicial;
 }
@@ -23,22 +25,33 @@ void inicializa_tiempo()
 //Devuelve la diferencia de este con t_previo en segundos
 long actualiza_tiempo()
 {
+  long dif;
+
   aux_time = rtc.now();
   t_actual = aux_time.unixtime();
-  return t_actual - t_previo;
-}
-
-//Devuelve los segundos que han pasado desde el inicio de la toma de
-//datos
-unsigned get_tiempo()
-{
-  return t_actual - t_inicial;
+  
+  dif = t_actual-t_previo;
+  
+  if ( ! dif)
+    return dif;
+  else
+    //Si es el inicio de la medicion
+    return 1;
 }
 
 //Indica si ya paso una multiplo entero de periodo (segundos)
 int verifica_tiempo(unsigned periodo)
 {
-  long dif = t_actual - t_inicial;
+  long dif;
+
+  if (! periodo)
+    return 0;
+
+  dif = t_actual-t_inicial;
+  //Tiempos antes de t_inicial no son validos
+    if( dif < 0 )
+       return 0;
+
   if ( dif % periodo )
     return 0;
   else
