@@ -1,0 +1,25 @@
+<!DOCTYPE HTML>
+
+<html>
+  <head>
+    <title>Localhost </title>
+
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/highstock.js"></script>   
+    <script type="text/javascript" src="js/main_new.js"></script>
+
+  </head>
+  <body>
+    {% for chart in l_chart %}
+    <div id="{{ chart["div_id"] }}"></div>
+    {% end %}
+
+    <script>
+     {% for chart in l_chart %}
+    generate_chart (
+       generate_options( "data", {{ chart["sens_id"] }} , "{{ chart["div_id"] }}", "{{ chart["title"] }}" ));
+     {% end %}
+
+    </script>
+  </body>
+</html>
